@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Boss — AI Escrow Platform</title>
+    <meta name="description"
+        content="Trustless AI-powered project management with automated escrow, quality assurance, and instant payouts.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: {
+                        dark: { 900: '#030712', 800: '#0a1120', 700: '#111827', 600: '#1a2332', 500: '#1e293b' },
+                        accent: { DEFAULT: '#00e5ff', muted: '#0097a7', glow: 'rgba(0,229,255,0.15)' },
+                        purple: { DEFAULT: '#a78bfa', muted: '#7c3aed', glow: 'rgba(167,139,250,0.15)' },
+                        emerald: { DEFAULT: '#34d399', glow: 'rgba(52,211,153,0.15)' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #030712;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: rgba(10, 17, 32, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(30, 41, 59, 0.6);
+        }
+
+        .glass-hover:hover {
+            border-color: rgba(0, 229, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes glowPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(0, 229, 255, 0.5);
+            }
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .fade-up {
+            animation: fadeUp 0.5s ease-out both;
+        }
+
+        .slide-in {
+            animation: slideIn 0.4s ease-out both;
+        }
+
+        .btn-glow {
+            transition: all 0.2s;
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 229, 255, 0.25);
+        }
+
+        .btn-glow-purple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(167, 139, 250, 0.25);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00e5ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .spinner-dark {
+            border-top-color: #1e293b;
+        }
+
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -10;
+            background: #030712;
+            pointer-events: none;
+        }
+
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+
+        .spinner-purple {
+            border-top-color: #a78bfa;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view-active {
+            display: flex;
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #ef4444;
+            border-radius: 50%;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border: 2px solid #030712;
+        }
+
+        .progress-fill {
+            transition: width 0.8s ease-out;
+        }
+
+        .receipt-card {
+            border-left: 3px solid #34d399;
+        }
+
+        /* Expandable milestone */
+        .milestone-expand {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.3s ease;
+            padding: 0;
+        }
+
+        .milestone-expand.open {
+            max-height: 600px;
+            padding-top: 16px;
+        }
+
+        /* Confetti */
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: 0;
+            z-index: 999;
+            animation: confettiFall 3s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .desktop-flex {
+                flex-direction: column !important;
+            }
+
+            .desktop-w-third {
+                width: 100% !important;
+            }
+
+            .desktop-w-half {
+                width: 100% !important;
+            }
+
+            .desktop-w-two-third {
+                width: 100% !important;
+            }
+
+            .login-cards {
+                flex-direction: column !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-dark-900 selection:bg-accent/30 selection:text-white">
+    <canvas id="starfield"></canvas>
+
+    <div class="content-layer min-h-screen flex flex-col">
+        <div id="view-login" class="view view-active flex-col items-center justify-center min-h-screen w-full px-4">
+            <div class="text-center mb-16 fade-up">
+                <div
+                    class="inline-flex items-center gap-2 bg-dark-600/50 border border-dark-500 rounded-full px-4 py-1.5 text-xs text-accent font-mono tracking-wider mb-8">
+                    <span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse"></span> PLATFORM v3.0
+                </div>
+                <h1 class="text-5xl md:text-6xl font-black tracking-tight text-white mb-4">
+                    Autonomous <span
+                        class="bg-gradient-to-r from-accent to-purple bg-clip-text text-transparent">Boss</span>
+                </h1>
+                <p class="text-gray-400 text-lg font-light max-w-lg mx-auto leading-relaxed">
+                    Trustless project management powered by AI Escrow, automated quality assurance, and instant
+                    micro-payouts.
+                </p>
+            </div>
+            <div class="glass rounded-2xl p-8 w-full max-w-md fade-up mb-10" style="animation-delay:0.15s">
+                <h2 class="text-lg font-bold text-white mb-6 text-center">Sign In</h2>
+                <div class="mb-4">
+                    <label class="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2 block">Email</label>
+                    <input id="loginEmail" type="email" value="demo@bitbybit.io"
+                        class="w-full bg-dark-900 border border-dark-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accent transition-colors"
+                        placeholder="you@company.com" />
+                </div>
+                <div class="mb-6">
+                    <label class="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2 block">I am
+                        a...</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="roleClient" onclick="selectRole('client')"
+                            class="border border-dark-500 rounded-xl py-3 text-sm font-semibold text-gray-300 hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="briefcase" class="w-4 h-4"></i> Client
+                        </button>
+                        <button id="roleFreelancer" onclick="selectRole('freelancer')"
+                            class="border border-dark-500 rounded-xl py-3 text-sm font-semibold text-gray-300 hover:border-purple hover:text-purple transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="code-2" class="w-4 h-4"></i> Freelancer
+                        </button>
+                    </div>
+                </div>
+                <button id="loginBtn" onclick="handleLogin()" disabled
+                    class="w-full bg-gradient-to-r from-accent to-accent-muted text-dark-900 font-bold py-3.5 rounded-xl btn-glow disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                    Enter Platform →
+                </button>
+            </div>
+            <div class="flex login-cards gap-6 w-full max-w-3xl fade-up" style="animation-delay:0.3s">
+                <div class="flex-1 glass rounded-xl p-5 glass-hover">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"><i
+                                data-lucide="shield-check" class="w-4 h-4 text-accent"></i></div>
+                        <h3 class="font-bold text-white text-sm">AI Escrow</h3>
+                    </div>
+                    <p class="text-xs text-gray-500 leading-relaxed">Funds locked until AI Judge verifies milestone
+                        quality.
+                    </p>
+                </div>
+                <div class="flex-1 glass rounded-xl p-5 glass-hover">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-lg bg-purple/10 flex items-center justify-center"><i
+                                data-lucide="cpu" class="w-4 h-4 text-purple"></i></div>
+                        <h3 class="font-bold text-white text-sm">AQA Engine</h3>
+                    </div>
+                    <p class="text-xs text-gray-500 leading-relaxed">Automated QA evaluates code, logic, and
+                        completeness.
+                    </p>
+                </div>
+                <div class="flex-1 glass rounded-xl p-5 glass-hover">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-lg bg-emerald/10 flex items-center justify-center"><i
+                                data-lucide="zap" class="w-4 h-4 text-emerald"></i></div>
+                        <h3 class="font-bold text-white text-sm">Instant Payouts</h3>
+                    </div>
+                    <p class="text-xs text-gray-500 leading-relaxed">Pass a milestone → get paid instantly. No delays.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 2. CLIENT DASHBOARD ===== -->
+        <div id="view-client" class="view flex-col min-h-screen w-full relative z-10">
+            <header
+                class="flex items-center justify-between px-6 py-4 border-b border-dark-500 flex-none bg-dark-900/80 backdrop-blur-md sticky top-0 z-50">
+                <div class="flex items-center gap-4">
+                    <button onclick="handleLogout()" class="text-gray-500 hover:text-accent transition-colors"><i
+                            data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                    <div class="w-px h-6 bg-dark-500"></div>
+                    <h1 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="briefcase"
+                            class="w-5 h-5 text-accent"></i> Client Dashboard</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleNotifications('client')"
+                        class="relative p-2 rounded-lg hover:bg-dark-600 transition-colors"><i data-lucide="bell"
+                            class="w-5 h-5 text-gray-400"></i><span id="clientNotifBadge"
+                            class="notif-badge hidden">0</span></button>
+                    <div class="flex items-center gap-2 glass rounded-full px-4 py-2"><span
+                            class="w-2 h-2 bg-accent rounded-full animate-pulse"></span><span
+                            class="text-xs font-mono text-gray-300" id="clientUserName">Client</span></div>
+                </div>
+            </header>
+            <div id="clientNotifPanel"
+                class="hidden absolute right-6 top-16 z-[60] glass rounded-xl w-80 max-h-64 overflow-y-auto shadow-2xl p-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Notifications</h3>
+                <div id="clientNotifList" class="space-y-2 text-xs"></div>
+            </div>
+
+            <div class="flex-1 flex desktop-flex gap-6 p-6 overflow-auto">
+                <!-- LEFT: Planning -->
+                <div class="desktop-w-third w-full md:w-1/3 flex flex-col gap-6">
+                    <div class="glass rounded-2xl p-6 flex-none fade-up">
+                        <h3
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="target" class="w-3.5 h-3.5 text-accent"></i> New Blueprint
+                        </h3>
+                        <textarea id="goalInput" placeholder="Describe the project you need built in detail..."
+                            class="w-full bg-dark-900 border border-dark-500 rounded-xl p-4 text-sm h-28 focus:outline-none focus:border-accent text-gray-200 placeholder-gray-600 mb-4 resize-none transition-colors font-light leading-relaxed"></textarea>
+                        <div class="relative mb-5">
+                            <span
+                                class="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-mono font-bold text-sm">$</span>
+                            <input id="fundsInput" type="number" value="5000"
+                                class="w-full bg-dark-900 border border-dark-500 rounded-xl pl-8 pr-24 py-3 text-sm focus:outline-none focus:border-accent text-white font-mono transition-colors" />
+                            <span
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 uppercase tracking-wider">Vault
+                                Deposit</span>
+                        </div>
+                        <button id="planBtn" onclick="handlePlanProject()"
+                            class="w-full bg-gradient-to-r from-accent to-accent-muted text-dark-900 font-bold py-3.5 rounded-xl btn-glow flex items-center justify-center gap-2">
+                            <span id="planBtnText">Lock Funds & Deploy Agent</span>
+                            <div id="planSpinner" class="spinner spinner-dark hidden"></div>
+                        </button>
+                        <p id="planThinking"
+                            class="hidden text-[10px] text-accent animate-pulse font-mono text-center mt-3 tracking-widest">
+                            [AI AGENT PLANNING...]</p>
+                    </div>
+                    <!-- Vault -->
+                    <div class="glass rounded-2xl p-6 flex-none relative overflow-hidden" style="min-height:180px">
+                        <div
+                            class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,229,255,0.03),transparent_70%)]">
+                        </div>
+                        <div class="flex items-center justify-between mb-4 relative z-10">
+                            <span
+                                class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><i
+                                    data-lucide="lock" class="w-3.5 h-3.5 text-accent"></i> Escrow</span>
+                            <span class="text-[10px] font-mono text-gray-500 glass rounded-full px-3 py-1">VAULT
+                                ACTIVE</span>
+                        </div>
+                        <div class="flex items-center justify-center relative z-10">
+                            <div id="vaultCircle"
+                                class="w-32 h-32 rounded-full border-2 border-dark-500 flex flex-col items-center justify-center bg-dark-900 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] transition-all duration-500">
+                                <i data-lucide="shield-check"
+                                    class="w-6 h-6 text-gray-600 mb-1 transition-colors duration-500"
+                                    id="vaultIcon"></i>
+                                <h2 id="vaultAmount" class="text-2xl font-mono font-black text-white">$0.00</h2>
+                                <p class="text-[8px] text-gray-500 mt-1 tracking-[0.2em] uppercase">Secured</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Terminal -->
+                    <div
+                        class="glass rounded-2xl p-4 flex flex-col min-h-[200px] max-h-[300px] relative overflow-hidden">
+                        <div
+                            class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent">
+                        </div>
+                        <div class="flex items-center gap-2 mb-3 pb-2 border-b border-dark-500 flex-none">
+                            <div class="flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500/70"></span><span
+                                    class="w-2.5 h-2.5 rounded-full bg-yellow-500/70"></span><span
+                                    class="w-2.5 h-2.5 rounded-full bg-green-500/70"></span></div>
+                            <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest ml-2">AQA
+                                Engine</span>
+                        </div>
+                        <div id="terminalLogs"
+                            class="flex-1 overflow-y-auto font-mono text-[11px] leading-loose space-y-1 pr-2">
+                            <div class="text-gray-600"><span class="text-accent/50">$</span> system online. awaiting
+                                payload...</div>
+                        </div>
+                    </div>
+                    <!-- Receipts -->
+                    <div id="transactionsPanel" class="glass rounded-2xl p-6 hidden">
+                        <h2
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 text-emerald"></i> Payment Receipts
+                        </h2>
+                        <div id="transactionsList" class="space-y-3 max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Detailed Roadmap -->
+                <div class="desktop-w-two-third w-full md:w-2/3 flex flex-col gap-6">
+                    <!-- Project Stats Bar -->
+                    <div id="clientStatsBar"
+                        class="hidden glass rounded-2xl p-5 flex items-center gap-8 flex-none fade-up">
+                        <div class="flex-1">
+                            <p class="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Milestones</p>
+                            <p class="text-lg font-mono font-black text-white" id="statTotal">0</p>
+                        </div>
+                        <div class="w-px h-10 bg-dark-500"></div>
+                        <div class="flex-1">
+                            <p class="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Completed</p>
+                            <p class="text-lg font-mono font-black text-emerald" id="statDone">0</p>
+                        </div>
+                        <div class="w-px h-10 bg-dark-500"></div>
+                        <div class="flex-1">
+                            <p class="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Remaining</p>
+                            <p class="text-lg font-mono font-black text-accent" id="statRemaining">0</p>
+                        </div>
+                        <div class="w-px h-10 bg-dark-500"></div>
+                        <div class="flex-1">
+                            <p class="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Budget Spent</p>
+                            <p class="text-lg font-mono font-black text-yellow-400" id="statSpent">$0</p>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-2">Progress</p>
+                            <div class="bg-dark-900 rounded-full h-2.5 overflow-hidden">
+                                <div id="progressBar"
+                                    class="progress-fill h-full bg-gradient-to-r from-accent to-emerald rounded-full"
+                                    style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Roadmap -->
+                    <div class="glass rounded-2xl p-6 flex-1 flex flex-col min-h-0">
+                        <h2
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5 flex items-center gap-2 flex-none">
+                            <i data-lucide="git-merge" class="w-3.5 h-3.5 text-accent"></i> Detailed Roadmap
+                        </h2>
+                        <div class="flex-1 overflow-y-auto pr-2" id="roadmapClient">
+                            <p class="text-gray-600 text-sm text-center mt-8 font-light">Deploy an agent to generate
+                                your
+                                project roadmap.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 3. FREELANCER ===== -->
+        <div id="view-freelancer" class="view flex-col min-h-screen w-full relative z-10">
+            <header
+                class="flex items-center justify-between px-6 py-4 border-b border-dark-500 flex-none bg-dark-900/80 backdrop-blur-md sticky top-0 z-50">
+                <div class="flex items-center gap-4">
+                    <button onclick="handleLogout()" class="text-gray-500 hover:text-purple transition-colors"><i
+                            data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                    <div class="w-px h-6 bg-dark-500"></div>
+                    <h1 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="code-2"
+                            class="w-5 h-5 text-purple"></i> Freelancer Workflow</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleNotifications('freelancer')"
+                        class="relative p-2 rounded-lg hover:bg-dark-600 transition-colors"><i data-lucide="bell"
+                            class="w-5 h-5 text-gray-400"></i><span id="freelancerNotifBadge"
+                            class="notif-badge hidden">0</span></button>
+                    <div class="flex items-center gap-3 glass rounded-full px-4 py-2">
+                        <div
+                            class="w-7 h-7 rounded-full bg-purple/10 border border-purple/20 flex items-center justify-center">
+                            <i data-lucide="activity" class="w-3.5 h-3.5 text-purple"></i>
+                        </div>
+                        <div>
+                            <div class="text-[9px] text-gray-500 uppercase tracking-wider font-bold leading-none">PFI
+                            </div>
+                            <div class="flex items-baseline gap-0.5"><span id="pfiScore"
+                                    class="text-sm font-mono font-bold text-emerald leading-none">100</span><span
+                                    class="text-[9px] text-gray-600">/100</span></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 glass rounded-full px-3 py-2"><span
+                            class="w-2 h-2 bg-purple rounded-full"></span><span class="text-xs font-mono text-gray-300"
+                            id="freelancerUserName">Dev</span></div>
+                </div>
+            </header>
+            <div id="freelancerNotifPanel"
+                class="hidden absolute right-6 top-16 z-[60] glass rounded-xl w-80 max-h-64 overflow-y-auto shadow-2xl p-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Notifications</h3>
+                <div id="freelancerNotifList" class="space-y-2 text-xs"></div>
+            </div>
+
+            <div class="flex-1 flex desktop-flex gap-6 p-6 overflow-auto">
+                <!-- LEFT: Project Info + Milestones -->
+                <div class="desktop-w-half w-full md:w-1/2 flex flex-col gap-6">
+                    <!-- Client & Project Info -->
+                    <div id="projectInfoCard" class="hidden glass rounded-2xl p-6 fade-up">
+                        <h3
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="folder-open" class="w-3.5 h-3.5 text-purple"></i> Active Project
+                        </h3>
+                        <div class="bg-dark-900 rounded-xl p-4 border border-dark-500 mb-4">
+                            <h4 id="projectGoal" class="text-white font-bold text-base mb-2 leading-snug"></h4>
+                            <div class="flex gap-4 text-[11px]"><span class="text-accent font-mono"
+                                    id="projectBudget"></span><span class="text-gray-500">•</span><span
+                                    class="text-gray-400" id="projectMilestoneCount"></span></div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-dark-900/50 rounded-xl p-3 border border-dark-500">
+                            <div
+                                class="w-9 h-9 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center flex-none">
+                                <i data-lucide="user" class="w-4 h-4 text-accent"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-white" id="clientInfoName"></p>
+                                <p class="text-[10px] text-gray-500" id="clientInfoEmail"></p>
+                            </div>
+                            <span
+                                class="ml-auto text-[9px] bg-accent/10 text-accent px-2 py-0.5 rounded font-bold uppercase">Client</span>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-[10px] text-gray-500 mb-1.5">
+                                <span>Progress</span><span id="freelancerProgressPct">0%</span>
+                            </div>
+                            <div class="bg-dark-900 rounded-full h-2 overflow-hidden">
+                                <div id="freelancerProgressBar"
+                                    class="progress-fill h-full bg-gradient-to-r from-purple to-emerald rounded-full"
+                                    style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Milestone Roadmap -->
+                    <div class="glass rounded-2xl p-6 flex flex-col flex-1 min-h-0">
+                        <h2
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5 flex items-center gap-2 flex-none">
+                            <i data-lucide="list-todo" class="w-3.5 h-3.5 text-purple"></i> Project Roadmap <span
+                                id="freelancerMilestoneCount"
+                                class="ml-auto text-[10px] font-mono text-gray-500">0/0</span>
+                        </h2>
+                        <div class="flex-1 overflow-y-auto pr-2" id="roadmapFreelancer">
+                            <p class="text-gray-600 text-sm text-center mt-8 font-light">Waiting for client to deploy an
+                                agent...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: File Upload + Results -->
+                <div class="desktop-w-half w-full md:w-1/2 flex flex-col gap-6">
+                    <!-- Upload Zone -->
+                    <div class="glass rounded-2xl p-6 flex flex-col border-t-2 border-transparent transition-colors"
+                        id="uploadPanel">
+                        <h3
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-purple"></i> Submit Deliverables
+                        </h3>
+                        <!-- Drag and Drop Zone -->
+                        <div id="dropZone"
+                            class="border-2 border-dashed border-dark-500 rounded-xl bg-dark-900/30 p-8 text-center cursor-pointer hover:border-purple/50 hover:bg-purple/5 transition-all relative mb-4"
+                            onclick="document.getElementById('fileInput').click()">
+                            <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)"
+                                accept=".js,.py,.ts,.tsx,.jsx,.html,.css,.json,.md,.txt,.zip,.rar,.java,.cpp,.c,.go,.rs,.rb,.php,.sql,.xml,.yaml,.yml,.env,.sh,.bat,.csv,.pdf,.doc,.docx">
+                            <div id="dropContent">
+                                <div
+                                    class="w-14 h-14 rounded-2xl bg-purple/10 border border-purple/20 mx-auto mb-4 flex items-center justify-center">
+                                    <i data-lucide="hard-drive-upload" class="w-7 h-7 text-purple"></i>
+                                </div>
+                                <p class="text-white font-semibold text-sm mb-1">Drop your file here or click to browse
+                                </p>
+                                <p class="text-gray-500 text-[11px]">Supports code files, archives, docs — up to 10MB
+                                </p>
+                                <p class="text-gray-600 text-[10px] mt-2">.js .py .ts .html .css .json .zip .pdf and
+                                    more
+                                </p>
+                            </div>
+                            <div id="fileSelected" class="hidden">
+                                <div
+                                    class="w-14 h-14 rounded-2xl bg-emerald/10 border border-emerald/20 mx-auto mb-4 flex items-center justify-center">
+                                    <i data-lucide="file-check" class="w-7 h-7 text-emerald"></i>
+                                </div>
+                                <p class="text-emerald font-bold text-sm mb-1" id="selectedFileName"></p>
+                                <p class="text-gray-500 text-[11px]" id="selectedFileSize"></p>
+                                <button onclick="event.stopPropagation(); clearFile()"
+                                    class="text-[10px] text-red-400 hover:text-red-300 mt-2 underline">Remove</button>
+                            </div>
+                        </div>
+                        <!-- Upload Button -->
+                        <button id="uploadBtn" onclick="handleBulkUpload()" disabled
+                            class="w-full bg-gradient-to-r from-purple to-purple-muted text-white font-bold py-3.5 rounded-xl btn-glow btn-glow-purple flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                            <span id="uploadBtnText"><i data-lucide="cpu" class="w-4 h-4 inline mr-1"></i> Upload &
+                                Evaluate
+                                All Milestones</span>
+                            <div id="uploadSpinner" class="spinner spinner-purple hidden"></div>
+                        </button>
+                        <p id="uploadThinking"
+                            class="hidden text-[10px] text-purple animate-pulse font-mono text-center mt-3 tracking-widest">
+                            [AQA EVALUATING ALL MILESTONES...]</p>
+                    </div>
+                    <!-- Results Panel -->
+                    <div id="resultsPanel" class="glass rounded-2xl p-6 hidden fade-up">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3
+                                class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="clipboard-check" class="w-3.5 h-3.5 text-emerald"></i> Evaluation
+                                Results
+                            </h3>
+                            <span id="resultsFileName"
+                                class="text-[10px] font-mono text-gray-500 bg-dark-600 px-2 py-0.5 rounded"></span>
+                        </div>
+                        <!-- Summary Bar -->
+                        <div id="resultsSummary" class="flex gap-3 mb-5">
+                            <div class="flex-1 bg-emerald/5 border border-emerald/20 rounded-xl p-3 text-center">
+                                <p class="text-[9px] text-gray-500 uppercase font-bold mb-0.5">Passed</p>
+                                <p class="text-xl font-mono font-black text-emerald" id="resultsPassed">0</p>
+                            </div>
+                            <div class="flex-1 bg-red-400/5 border border-red-400/20 rounded-xl p-3 text-center">
+                                <p class="text-[9px] text-gray-500 uppercase font-bold mb-0.5">Failed</p>
+                                <p class="text-xl font-mono font-black text-red-400" id="resultsFailed">0</p>
+                            </div>
+                            <div class="flex-1 bg-accent/5 border border-accent/20 rounded-xl p-3 text-center">
+                                <p class="text-[9px] text-gray-500 uppercase font-bold mb-0.5">Payout</p>
+                                <p class="text-xl font-mono font-black text-accent" id="resultsPayout">$0</p>
+                            </div>
+                        </div>
+                        <div id="resultsList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
+                    </div>
+                    <!-- Earnings -->
+                    <div id="earningsPanel" class="glass rounded-2xl p-6 hidden">
+                        <h2
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald"></i> Earnings Log
+                        </h2>
+                        <div id="earningsList" class="space-y-3 max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confetti container -->
+        <div id="confettiContainer"></div>
+    </div> <!-- Close content-layer -->
+
+    <script src="/app.js"></script>
+</body>
+
+</html>
